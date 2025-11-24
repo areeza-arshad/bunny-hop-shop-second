@@ -12,9 +12,10 @@ const flash = require('connect-flash')
 const expressSession = require('express-session')
 // console.log(process.env)
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.set('views', path.join((__dirname), 'views'))
 app.set('view engine', 'ejs')
-app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(flash())
 app.use(expressSession({
@@ -30,5 +31,6 @@ app.use('/', indexRouter)
 app.use('/orders', orderRouter)
 app.use('/seller', sellerRouter)
 
-
-app.listen(3000)
+app.listen(3000, () => {
+  console.log(`Server listening on port ${port}`);
+});

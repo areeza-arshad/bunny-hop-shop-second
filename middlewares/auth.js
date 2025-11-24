@@ -1,24 +1,27 @@
 const jwt = require('jsonwebtoken');
 const flash = require('connect-flash')
+
 function isLoggedIn(req, res, next) {
-    if(req.cookies.token) {
-        if(process.env.TOKEN){
-            try {
-                jwt.verify(req.cookies.token, process.env.TOKEN, (err, data) => {
-                    if (err) console.log(err)
-                    req.user = data
-                    next()
-                })
-            } catch (error) {
-                console.log(error.message)
+    const token = req.cookies.token;
+    if(token && process.env.TOKEN){
+        jwt.verify(token, process.env.TOKEN, (err, data) => {
+            if (err) {
+                console.log(err);
+                req.user = null;
+                req.session.seller = false;
+            } else {
+                req.user = data; // user data yahan aayega
             }
-        }
-    } else{
-        req.user = 'unsigned'
-        req.session.seller = false
-        next()
+            next();
+        });
+    } else {
+        req.user = null;
+        req.session.seller = false;
+        next();
     }
 }
+
+
 function isLoggedInStrict(req, res, next) {
     if(req.cookies.token) {
         if(process.env.TOKEN){
