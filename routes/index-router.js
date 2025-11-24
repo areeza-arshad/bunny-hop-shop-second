@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express');
 const router = express.Router();
 const userModel = require('../models/user-model');
@@ -9,22 +10,42 @@ const debug = require('debug')('development:routes')
 const { isLoggedInStrict, isLoggedIn, redirectIfLogin } = require('../middlewares/auth')
 const checkoutCheckout = require('../middlewares/checkout-check')
 const isSeller = require('../middlewares/isSeller')
-const productModel = require('../models/product-model')
-require('dotenv').config()
+const productModel = require('../models/product-model');
+const multer = require('multer');
+const { default: storage } = require('../cloudinary');
 
+const upload = multer({ storage });
 
 router.get('/', isLoggedIn, async function (req, res) {
-    let error = req.flash('error')
-    let feat = await productModel.find({ tags: 'featured' })
-    let trendy = await productModel.find({ tags: 'trend' })
-    if(req.user === 'unsigned'){
-        return res.render('index', { user: req.user, feat, error, trendy, req: req })
-    }
-    let user = await userModel.findOne({username: req.user.username})
-    let cart = user.cart
-    res.render('index', { user: req.user, feat, error, trendy, req: req, cart })
+    let error = req.flash('error');
+    let feat = await productModel.find({ tags: 'featured' });
+    let trendy = await productModel.find({ tags: 'trend' });
 
-})
+    //  FIX: If user is unsigned OR req.user is null/undefined → no username access
+    if (!req.user || req.user === 'unsigned') {
+        return res.render('index', {
+            user: 'unsigned',
+            feat,
+            error,
+            trendy,
+            req
+        });
+    }
+
+    //  SAFE: Only runs when req.user exists and has username
+    let user = await userModel.findOne({ username: req.user.username });
+    let cart = user?.cart || [];
+
+    res.render('index', {
+        user: req.user,
+        feat,
+        error,
+        trendy,
+        req,
+        cart
+    });
+});
+
 router.get('/access', redirectIfLogin, function (req, res) {
     let registerError = req.flash('registerError')
     let loginError = req.flash('loginError')
@@ -102,7 +123,8 @@ router.post('/login', async (req, res) => {
 
 router.get('/logout', (req, res) => {
     res.clearCookie('token')
-    req.user = 'unsigned'
+    req.session.seller = false;
+    // req.user = 'unsigned'
     res.redirect('/')
 })
 router.get('/products', (req, res) => {
@@ -110,20 +132,35 @@ router.get('/products', (req, res) => {
 })
 
 router.get('/products/:id', isLoggedIn, async (req, res) => {
-    let product = await productsModel.findOne({ _id: req.params.id })
-    if(!product.isApproved){
-        req.flash('error', 'product not approved yet')
-        return res.redirect('/')
+    let product = await productsModel.findOne({ _id: req.params.id });
+
+    if (!product.isApproved) {
+        req.flash('error', 'product not approved yet');
+        return res.redirect('/');
     }
-    if(req.user !== 'unsigned'){
-        let user = await userModel.findOne({username: req.user.username})
-        let cart = user.cart
-        res.render('product', { product: product, user: req.user, cart, productPage: true })
-    } else{
-        res.render('product', { product: product, user: req.user, productPage: true })
+
+    // 🔥 FIX: If user is unsigned OR req.user missing, show product without crash
+    if (!req.user || req.user === 'unsigned') {
+        return res.render('product', {
+            product,
+            user: 'unsigned',
+            productPage: true
+        });
     }
-    
-})
+
+    // 🔥 SAFE: Only fetch user cart when req.user exists
+    let user = await userModel.findOne({ username: req.user.username });
+    let cart = user?.cart || [];
+
+    res.render('product', {
+        product,
+        user: req.user,
+        cart,
+        productPage: true
+    });
+});
+
+
 router.get('/clothings/:category', isLoggedIn, async (req, res) => {
     let category = req.params.category.toLowerCase();
    
@@ -346,5 +383,6 @@ router.get('/success-checkout', isLoggedInStrict, checkoutCheckout, async (req, 
     let cart = user.cart
     res.render('success-checkout', {user: req.user, cart, req: req})
 })
+
 
 module.exports = router;
