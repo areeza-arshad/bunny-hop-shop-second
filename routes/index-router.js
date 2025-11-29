@@ -138,8 +138,6 @@ router.get('/products/:id', isLoggedIn, async (req, res) => {
         req.flash('error', 'product not approved yet');
         return res.redirect('/');
     }
-
-    // 🔥 FIX: If user is unsigned OR req.user missing, show product without crash
     if (!req.user || req.user === 'unsigned') {
         return res.render('product', {
             product,
@@ -148,88 +146,127 @@ router.get('/products/:id', isLoggedIn, async (req, res) => {
         });
     }
 
-    // 🔥 SAFE: Only fetch user cart when req.user exists
     let user = await userModel.findOne({ username: req.user.username });
     let cart = user?.cart || [];
 
-    res.render('product', {
-        product,
-        user: req.user,
-        cart,
-        productPage: true
-    });
+    res.render('product', { product, user: req.user, cart, productPage: true});
+});
+
+// router.get('/clothings/:category', isLoggedIn, async (req, res) => {
+//     let category = req.params.category.toLowerCase();
+   
+//     displayCategory = category.charAt(0).toUpperCase() + category.slice(1);
+//     if(req.user === 'unsigned'){
+//         if(req.query.searched){
+//             let request = req.query.searched.toLowerCase()
+//             const selectedProducts = await productsModel.find({title: 
+//                 { $regex: request, $options: 'i'}
+//             })
+//             return res.render('categorized', { user: req.user, gen: false, cat: false, searched: true, selectedProducts, req:req, searched: true, request: req.query.searched})
+//         }
+//         let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true })
+//         if(req.query.gender === 'all'){
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
+//         } if(req.query.gender === 'men'){
+//            let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'men' })
+//            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
+//         } if(req.query.gender === 'women'){
+//             let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'women' })
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
+//         } else{
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
+//         }
+//     }
+//     if(req.user !== 'unsigned'){ 
+       
+//     let user = await userModel.findOne({username: req.user.username})
+//     let cart = user.cart
+//     if(req.query.searched){
+//         let request = req.query.searched.toLowerCase()
+//         const selectedProducts = await productsModel.find({title: 
+//             { $regex: request, $options: 'i'}
+//         })
+//         return res.render('categorized', { user: req.user, gen: false, cat: false, searched: true, selectedProducts, cart, req:req, searched: true, request: req.query.searched})
+//     }
+//         let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true })
+//         if(req.query.gender === 'all'){
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
+//         } if(req.query.gender === 'men'){
+//            let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'men' })
+//            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
+//         } if(req.query.gender === 'women'){
+//             let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'women' })
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
+//         } else{
+//             return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
+//         }
+//     }
+// });
+
+router.get('/clothings/:category', async (req, res) => {
+    let category = req.params.category.toLowerCase();
+
+    let displayCategory = category.charAt(0).toUpperCase() + category.slice(1);
+
+    if (req.query.searched) {
+        let request = req.query.searched.toLowerCase();
+        const selectedProducts = await productsModel.find({
+            title: { $regex: request, $options: 'i' }
+        });
+
+        return res.render('categorized', { user: req.user || null, gen: false, cat: false, searched: true, selectedProducts, cart: req.user ? (await userModel.findOne({ username: req.user.username })).cart : null, req: req, request: req.query.searched });
+    }
+
+    let filter = { category: req.params.category, isApproved: true };
+
+    if (req.query.gender === "boys") filter.gender = "boys";
+    if (req.query.gender === "girls") filter.gender = "girls";
+
+    let selectedProducts = await productsModel.find(filter);
+
+    let cart = null;
+    if (req.user && req.user.username) {
+        const dbUser = await userModel.findOne({ username: req.user.username });
+        cart = dbUser?.cart || null;
+    }
+
+    return res.render('categorized', { user: req.user || null, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req});
 });
 
 
-router.get('/clothings/:category', isLoggedIn, async (req, res) => {
-    let category = req.params.category.toLowerCase();
-   
-    displayCategory = category.charAt(0).toUpperCase() + category.slice(1);
-    if(req.user === 'unsigned'){
-        if(req.query.searched){
-            let request = req.query.searched.toLowerCase()
-            const selectedProducts = await productsModel.find({title: 
-                { $regex: request, $options: 'i'}
-            })
-            return res.render('categorized', { user: req.user, gen: false, cat: false, searched: true, selectedProducts, req:req, searched: true, request: req.query.searched})
-        }
-        let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true })
-        if(req.query.gender === 'all'){
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
-        } if(req.query.gender === 'men'){
-           let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'men' })
-           return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
-        } if(req.query.gender === 'women'){
-            let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'women' })
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
-        } else{
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, req: req, req})
-        }
-    }
-    if(req.user !== 'unsigned'){ 
-       
-    let user = await userModel.findOne({username: req.user.username})
-    let cart = user.cart
-    if(req.query.searched){
-        let request = req.query.searched.toLowerCase()
-        const selectedProducts = await productsModel.find({title: 
-            { $regex: request, $options: 'i'}
-        })
-        return res.render('categorized', { user: req.user, gen: false, cat: false, searched: true, selectedProducts, cart, req:req, searched: true, request: req.query.searched})
-    }
-        let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true })
-        if(req.query.gender === 'all'){
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
-        } if(req.query.gender === 'men'){
-           let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'men' })
-           return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
-        } if(req.query.gender === 'women'){
-            let selectedProducts = await productsModel.find({ category: req.params.category, isApproved: true, gender: 'women' })
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
-        } else{
-            return res.render('categorized', { user: req.user, selectedProducts, displayCategory, category, cat: true, gen: false, cart, req: req })
-        }
-    }
-})
+// router.get('/fits/:gender', isLoggedIn, async (req, res) => {
+//     let selectedProducts = await productsModel.find({ gender: req.params.gender, isApproved: true })
+//     let gender = req.params.gender;
+//     gender = gender.charAt(0).toUpperCase() + gender.slice(1);
+//     if(req.user === 'unsigned'){
+//         return res.render('categorized', { user: req.user, selectedProducts, gender, gen: true, cat: false, req: req})
+//     }
+//     let user = await userModel.findOne({username: req.user.username})
+//     let cart = user.cart
+//     res.render('categorized', { user: req.user, selectedProducts, gender, gen: true, cat: false, cart , req: req})
+// })
 
-router.get('/fits/:gender', isLoggedIn, async (req, res) => {
-    let selectedProducts = await productsModel.find({ gender: req.params.gender, isApproved: true })
-    let gender = req.params.gender;
-    gender = gender.charAt(0).toUpperCase() + gender.slice(1);
-    if(req.user === 'unsigned'){
-        return res.render('categorized', { user: req.user, selectedProducts, gender, gen: true, cat: false, req: req})
+router.get('/fits/:gender', async (req, res) => {
+    let selectedProducts = await productsModel.find({ gender: req.params.gender, isApproved: true });
+
+    let gender = req.params.gender.toLowerCase();
+    let displayGender = gender.charAt(0).toUpperCase() + gender.slice(1);
+
+    let cart = null;
+    if (req.user && req.user.username) {
+        let dbUser = await userModel.findOne({ username: req.user.username });
+        cart = dbUser?.cart || null;
     }
-    let user = await userModel.findOne({username: req.user.username})
-    let cart = user.cart
-    res.render('categorized', { user: req.user, selectedProducts, gender, gen: true, cat: false, cart , req: req})
-})
+
+    return res.render('categorized', { user: req.user || null, selectedProducts, gender: displayGender, gen: true, cat: false, cart, req});
+});
 
 router.get('/login', redirectIfLogin, (req, res) => {
     let loginError = req.flash('loginError')
     res.render('login', { loginError })
 })
 router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
-    if (req.user === 'unsigned') {
+    if (!req.user) {
       req.flash('sellerError', 'you need an account to use the cart');
       return res.status(401).json({ redirect: '/access' });
     }
@@ -252,7 +289,7 @@ router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
     } catch (error) {
       console.log(error);
     }
-  });
+});
   
 router.get('/cart', isLoggedInStrict, async (req, res) => {
     let error = req.flash('error')

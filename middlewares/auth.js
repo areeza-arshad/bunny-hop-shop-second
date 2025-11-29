@@ -10,7 +10,7 @@ function isLoggedIn(req, res, next) {
                 req.user = null;
                 req.session.seller = false;
             } else {
-                req.user = data; // user data yahan aayega
+                req.user = data;
             }
             next();
         });

@@ -12,6 +12,19 @@ const flash = require('connect-flash')
 const expressSession = require('express-session')
 // console.log(process.env)
 
+app.get('/privacy-policy', (req, res) => {
+  res.render('privacy-policy', { user: null, cart: [], req });
+});
+
+app.get('/terms-of-service', (req, res) => {
+  res.render('terms-of-service', {user: null, cart: [], req});
+});
+app.get('/about', (req, res) => {
+  res.render('about', {user: null, cart: [], req});
+});
+
+
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.set('views', path.join((__dirname), 'views'))

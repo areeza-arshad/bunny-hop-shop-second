@@ -11,10 +11,10 @@
       <h2 class="text-2xl font-bold tracking-tight text-gray-900">Pick your favorite <%= displayCategory%> <i class="ri-shopping-cart-2-line"></i> </h2>     
    <% } %>
    <%if (gen) {%>
-    <%if(gender === 'Men'){%>
+    <%if(gender === 'Boys'){%>
       <h2 class="text-2xl font-bold tracking-tight text-gray-900">Welcome to <%= gender%>'s section <i class="ri-men-line"></i> </h2>
     <%}%>
-    <%if(gender === 'Women'){%>
+    <%if(gender === 'Girls'){%>
       <h2 class="text-2xl font-bold tracking-tight text-gray-900">Welcome to <%= gender%>'s section <i class="ri-women-line"></i></h2>
    <% }%>
    <%}%>
@@ -26,8 +26,8 @@
         <label for="gender-filter" class="mr-2 text-sm font-medium text-gray-700">Gender:</label>
         <select id="gender-filter" name="gender" class="bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
           <option value="all">All</option>
-          <option value="men">Men</option>
-          <option value="women">Women</option>
+          <option value="boys">Boys</option>
+          <option value="girls">Girls</option>
         </select>
         <input class="bg-blue-300 ml-2 px-4 py-1 rounded" type="submit" value="filter">
       </form>
