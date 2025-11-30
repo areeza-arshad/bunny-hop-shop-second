@@ -37,7 +37,7 @@ const prodModel = mongoose.Schema({
     discount: String,
     gender: {
         type: String,
-        enum: ['men', 'women'],
+        enum: ['boy', 'girl', "unisex"],
         required: true
     },
     textColor: String,

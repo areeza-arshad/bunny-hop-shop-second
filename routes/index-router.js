@@ -55,16 +55,25 @@ router.get('/access', redirectIfLogin, function (req, res) {
 
 router.post('/register', async (req, res) => {
     let { fullName, email, username, password } = req.body;
-    let user = await userModel.findOne({ username })
-    if (user) {
-        req.flash('registerError', 'User already exists')
-        return res.redirect('/access')
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        req.flash('registerError', 'Invalid email format');
+        return res.redirect('/access');
     }
+
+    let user = await userModel.findOne({ email });
+    if (user) {
+        req.flash('registerError', 'User already exists');
+        return res.redirect('/access');
+    }
+
     try {
         if (!process.env.TOKEN) {
-            req.flash('registerError', 'Token missing')
-            return res.send('bring token')
+            req.flash('registerError', 'Token missing');
+            return res.send('bring token');
         }
+
         bcrypt.genSalt(10, (err, salt) => {
             bcrypt.hash(password, salt, async (err, hash) => {
                 try {
@@ -72,24 +81,29 @@ router.post('/register', async (req, res) => {
                         fullName,
                         email,
                         username,
-                        password: hash
-                    })
-                    let token = jwt.sign({ username, userId: user._id, isSeller: user.isSeller }, process.env.TOKEN)
-                    res.cookie('token', token)
-                    res.redirect('/')
-                } catch (error) {
-                    req.flash('registerError', 'cannot create user')
-                    console.log(error)
-                    res.redirect('/access')
-                }
-            })
-        })
-    } catch (error) {
-        req.flash('registerError', 'something went wrong')
-        res.redirect('/access')
-    }
+                        password: hash,
+                    });
 
-})
+                    let token = jwt.sign(
+                        { username, userId: user._id, isSeller: user.isSeller },
+                        process.env.TOKEN
+                    );
+                    
+                    res.cookie('token', token);
+                    res.redirect('/');
+                } catch (error) {
+                    req.flash('registerError', 'cannot create user');
+                    console.log(error);
+                    res.redirect('/access');
+                }
+            });
+        });
+    } catch (error) {
+        req.flash('registerError', 'something went wrong');
+        res.redirect('/access');
+    }
+});
+
 
 router.post('/login', async (req, res) => {
     let { email, password } = req.body
@@ -155,52 +169,20 @@ router.get('/products/:id', isLoggedIn, async (req, res) => {
 router.get('/clothings/:category', isLoggedIn, async (req, res) => {
     const category = req.params.category.toLowerCase();
     const displayCategory = category.charAt(0).toUpperCase() + category.slice(1);
+
     const gender = req.query.gender;
     const searchTerm = req.query.searched?.toLowerCase();
     const isUnsigned = !req.user || req.user === 'unsigned';
-    // console.log(isUnsigned, req.user)
 
-    if (isUnsigned) {
 
-        const cart = [];
-        if (searchTerm) {
-            const selectedProducts = await productsModel.find({
-                title: { $regex: searchTerm, $options: 'i' }
-            });
+    let query = {
+        category: { $in: [category] },
+        isApproved: true
+    };
 
-            return res.render('categorized', {
-                user: req.user,
-                req,
-                cart,
-                selectedProducts,
-                displayCategory,
-                searched: true,
-                request: req.query.searched,
-                cat: false,
-                gen: false
-            });
-        }
+    if (gender === 'boy' || gender === 'boys') query.gender = 'boy';
+    if (gender === 'girl' || gender === 'girls') query.gender = 'girl';
 
-        let query = { category, isApproved: true };
-        if (gender === 'men') query.gender = 'men';
-        if (gender === 'women') query.gender = 'women';
-
-        const selectedProducts = await productsModel.find(query);
-
-        return res.render('categorized', {
-            user: req.user,
-            req,
-            cart,
-            selectedProducts,
-            displayCategory,
-            category,
-            cat: true,
-            gen: false
-        });
-    }
-
-    const dbUser = await userModel.findOne({ username: req.user.username });
-    const cart = dbUser.cart || [];
 
     if (searchTerm) {
         const selectedProducts = await productsModel.find({
@@ -210,7 +192,7 @@ router.get('/clothings/:category', isLoggedIn, async (req, res) => {
         return res.render('categorized', {
             user: req.user,
             req,
-            cart,
+            cart: isUnsigned ? [] : (await userModel.findOne({ username: req.user.username })).cart,
             selectedProducts,
             displayCategory,
             searched: true,
@@ -220,11 +202,14 @@ router.get('/clothings/:category', isLoggedIn, async (req, res) => {
         });
     }
 
+ 
+    let cart = [];
+    if (!isUnsigned) {
+        const dbUser = await userModel.findOne({ username: req.user.username });
+        cart = dbUser.cart || [];
+    }
 
-    let query = { category, isApproved: true };
-    if (gender === 'men') query.gender = 'men';
-    if (gender === 'women') query.gender = 'women';
-
+   console.log(query)
     const selectedProducts = await productsModel.find(query);
 
     return res.render('categorized', {
