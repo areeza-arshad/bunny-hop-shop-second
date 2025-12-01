@@ -10,7 +10,7 @@ const db = require('./config/mongoose.connection')
 const sellerRouter = require('./routes/seller-router')
 const flash = require('connect-flash')
 const expressSession = require('express-session')
-// console.log(process.env)
+
 
 app.get('/privacy-policy', (req, res) => {
   res.render('privacy-policy', { user: null, cart: [], req });
