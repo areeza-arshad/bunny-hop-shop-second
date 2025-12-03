@@ -657,5 +657,44 @@ router.post('/create/:id', async (req, res) => {
   }
 });
 
+router.get("/seller/edit/:id", isLoggedInStrict, async (req, res) => {
+    const product = await productsModel.findById(req.params.id);
+    const user = await userModel.findOne({ username: req.user.username });
+    const cart = user?.cart || [];
+
+    res.render("dashboard", { 
+        user, 
+        cart, 
+        edit: true, 
+        product, 
+        error: [], 
+        success: []
+    });
+});
+
+router.post("/seller/update/:id", upload.array("images", 5), async (req, res) => {
+    let images = [];
+
+    // new images uploaded?
+    if (req.files?.length > 0) {  
+    images = req.files.map(file => "/uploads/" + file.filename);
+    } else {
+        const product = await productsModel.findById(req.params.id);
+        images = product?.images || []; 
+    }
+
+    await productsModel.findByIdAndUpdate(req.params.id, {
+        title: req.body.title,
+        description: req.body.description,
+        price: req.body.price,
+        gender: req.body.gender,
+        color: req.body.color,
+        category: req.body.category,
+        images: images
+    });
+
+    res.redirect("/seller/dashboard");
+});
+
 
 module.exports = router;

@@ -88,7 +88,7 @@ router.get('/dashboard', isLoggedInStrict, isSeller, async (req, res) => {
     let cart = user?.cart || [];
     let error = req.flash('error')
     let success = req.flash('success');
-    res.render('dashboard', { user, cart, error, success, uploadedImage: null })
+    res.render('dashboard', { user, cart, error, success, uploadedImage: null, edit: false })
 })
 
 

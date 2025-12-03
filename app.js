@@ -12,7 +12,6 @@ const flash = require('connect-flash')
 const expressSession = require('express-session')
 const salesRouter = require("./routes/sales-router")
 
-
 app.get('/privacy-policy', (req, res) => {
   res.render('privacy-policy', { user: null, cart: [], req });
 });

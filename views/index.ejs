@@ -97,7 +97,7 @@
         >
           <% feat.forEach((product) => { %>
           <div
-            class="cards edge h-72 w-64 overflow-hidden rounded-xl flex flex-col max-sm:shadow-md 2xl:shadow-md  justify-end items-end"
+            class="cards edge h-72 w-64 overflow-hidden rounded-xl flex flex-col max-sm:shadow-md 2xl:shadow-md justify-end items-end relative"
           >
             <div class="h-full w-full relative">
               <img
@@ -112,7 +112,14 @@
                 src="<%= product.image2 %>"
                 alt=""
               />
+              
             </div>
+            <% if (product.sale) { %>
+              <div class="flex justify-center items-center bg-slate-500 text-white text-xs text-center absolute rounded-full top-0 h-12 w-12 z-50">
+                <%= product.sale %>% <br> OFF
+              </div>
+            <% } %>
+            
             <div
               class=" z-50 min-h-10 w-full bg-white flex xl:itmes-start max-md:items-center 2xl:items-center justify-center"
             >

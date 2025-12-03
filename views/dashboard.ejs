@@ -30,13 +30,13 @@
                     <li><a href="/seller/plusproducts" class="block py-2 px-4 bg-gray-300 mb-2 rounded">Products</a></li>
 
                     <li><a href="/orders/all" class="block py-2 px-4 bg-gray-300 mb-2 rounded">Orders</a></li>
-                                          <li><a href="/sales" class="block py-2 px-4 bg-gray-300 mb-2 rounded">Sales</a></li>
+                    <li><a href="/sales" class="block py-2 px-4 bg-gray-300 mb-2 rounded">Sales</a></li>
                   
                 </ul>
             </div>
 
             <!-- Main Content Area -->
-            <div class="w-full md:w-3/4 p-4 relative">
+            <!-- <div class="w-full md:w-3/4 p-4 relative">
                 <h2 class="text-2xl font-semibold mb-4">Upload Clothing Product</h2>
                 <form action="/seller/push" method="POST" enctype="multipart/form-data">
                     <div class="mb-4">
@@ -74,7 +74,7 @@
                     </div>
 
                     <div class="imagcontainer flex flex-col md:flex-row gap-4 w-full mb-2">
-                        <!-- Image 1 -->
+                       
                         <div class="flex-1">
                             <div class="block mb-1">Main Image</div>
                             <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
@@ -84,7 +84,7 @@
                             </label>
                         </div>
 
-                        <!-- Image 2 -->
+                        
                         <div class="flex-1">
                             <label class="block mb-1">Image 2</label>
                             <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
@@ -94,7 +94,7 @@
                             </label>
                         </div>
 
-                        <!-- Image 3 -->
+                        
                         <div class="flex-1">
                             <label class="block mb-1">Image 3</label>
                             <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
@@ -104,7 +104,7 @@
                             </label>
                         </div>
 
-                        <!-- Image 4 -->
+                      
                         <div class="flex-1">
                             <label class="block mb-1">Image 4</label>
                             <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
@@ -114,7 +114,6 @@
                             </label>
                         </div>
 
-                        <!-- Image 5 -->
                         <div class="flex-1">
                             <label class="block mb-1">Image 5</label>
                             <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
@@ -127,7 +126,6 @@
                     <input type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" value="Upload">
                 </form>
 
-                <!-- for image preview -->
                 <script>
                     const fileInputs = document.querySelectorAll('.imageInput');
                     const previews = document.querySelectorAll('.preview');
@@ -154,7 +152,132 @@
                         });
                     });
                 </script>
-            </div>
+            </div> -->
+
+            <div class="w-full md:w-3/4 p-4 relative">
+
+    <% if (edit) { %>
+        <h2 class="text-2xl font-semibold mb-4">Edit Clothing Product</h2>
+        <form action="/seller/update/<%= product._id %>" method="POST" enctype="multipart/form-data">
+    <% } else { %>
+        <h2 class="text-2xl font-semibold mb-4">Upload Clothing Product</h2>
+        <form action="/seller/push" method="POST" enctype="multipart/form-data">
+    <% } %>
+
+        <!-- TITLE -->
+        <div class="mb-4">
+            <label for="title" class="block mb-2">Title</label>
+            <input type="text" id="title" name="title"
+            value="<%= edit ? product.title : '' %>"
+            class="w-full px-4 py-2 border rounded" required>
+        </div>
+
+        <!-- DESCRIPTION -->
+        <div class="mb-4">
+            <label for="description" class="block mb-2">Description</label>
+            <textarea id="description" name="description" rows="4"
+            class="w-full px-4 py-2 border rounded" required><%= edit ? product.description : '' %></textarea>
+        </div>
+
+        <!-- PRICE -->
+        <div class="mb-4">
+            <label for="price" class="block mb-2">Price</label>
+            <input type="text" id="price" name="price"
+            value="<%= edit ? product.price : '' %>"
+            class="w-full px-4 py-2 border rounded" required>
+        </div>
+
+        <!-- GENDER -->
+        <div class="mb-4">
+            <label for="gender" class="block mb-2">Gender</label>
+            <select id="gender" name="gender" class="w-full px-4 py-2 border rounded" required>
+                <option value="boy" <%= edit && product.gender === 'boy' ? 'selected' : '' %>>Boy</option>
+                <option value="girl" <%= edit && product.gender === 'girl' ? 'selected' : '' %>>Girl</option>
+                <option value="unisex" <%= edit && product.gender === 'unisex' ? 'selected' : '' %>>Unisex</option>
+            </select>
+        </div>
+
+        <!-- COLOR -->
+        <div class="mb-4">
+            <label for="color" class="block mb-2">Color</label>
+            <input type="text" id="color" name="color"
+            value="<%= edit ? product.color : '' %>"
+            placeholder="If multiple colors, use comma between colors"
+            class="w-full px-4 py-2 border rounded" required>
+        </div>
+
+        <!-- CATEGORY -->
+        <div class="mb-4">
+            <label for="category" class="block mb-2">Category</label>
+            <input type="text" id="category" name="category"
+            value="<%= edit ? product.category : '' %>"
+            class="w-full px-4 py-2 border rounded" required>
+        </div>
+
+        <!-- IMAGES -->
+        <div class="imagcontainer flex flex-col md:flex-row gap-4 w-full mb-2">
+    <% for (let i = 0; i < 5; i++) { %>
+        <div class="flex-1">
+            <label class="block mb-1">Image <%= i+1 %></label>
+
+            <label class="cursor-pointer w-full bg-white text-gray-400 hover:text-black transition-all duration-300 rounded-md border p-2 flex flex-col items-center justify-center">
+
+                <span class="upload-text <%= edit && product.images && product.images[i] ? 'hidden' : '' %>">Upload</span>
+
+                <input type="file" name="images" accept="image/*"
+                class="imageInput hidden w-full" <%= edit ? '' : 'required' %>>
+
+                <!-- OLD IMAGE PREVIEW IF EDIT MODE -->
+                <% if (edit && product.images && product.images[i]) { %>
+                    <img src="<%= product.images[i] %>" class="preview w-full h-40 object-cover mt-2 rounded">
+                <% } else { %>
+                    <img class="preview w-full h-40 object-cover mt-2 hidden rounded">
+                <% } %>
+
+            </label>
+        </div>
+    <% } %>
+</div>
+
+
+
+
+        <!-- SUBMIT BUTTON -->
+        <input type="submit"
+        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+        value="<%= edit ? 'Update Product' : 'Upload' %>">
+
+    </form>
+
+
+    <!-- IMAGE PREVIEW JS -->
+    <script>
+        const fileInputs = document.querySelectorAll('.imageInput');
+        const previews = document.querySelectorAll('.preview');
+        const uploadTexts = document.querySelectorAll('.upload-text');
+
+        fileInputs.forEach((input, index) => {
+            input.addEventListener('change', function() {
+                const file = input.files[0];
+                const preview = previews[index];
+                const uploadText = uploadTexts[index];
+
+                if(file){
+                    const reader = new FileReader();
+                    reader.onload = function(e){
+                        preview.src = e.target.result;
+                        preview.classList.remove('hidden');
+                        uploadText.classList.add('hidden');
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.classList.add('hidden');
+                    uploadText.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</div>
 
         </div>
     </div>
