@@ -19,36 +19,46 @@ const saleModel = require('../models/sale-model');
 const sendEmail = require('../utils/sendEmail');
 const upload = multer({ storage });
 const {getDiscountForProduct} = require("../utils/discount")
-const {orderEmailTemplate} = require("../helper/orderEmailTemplate")
+const {orderEmailTemplate} = require("../helper/orderEmailTemplate");
+const addToCart = require('../middlewares/addto-cart');
 
-router.get('/', isLoggedIn, async function (req, res) {
+router.get('/', isLoggedIn, addToCart, async function (req, res) {
     let error = req.flash('error');
     let feat = await productModel.find({ tags: 'featured' });
     let trendy = await productModel.find({ tags: 'trend' });
 
- 
-    if (!req.user || req.user === 'unsigned') {
-        return res.render('index', {
-            user: 'unsigned',
-            feat,
-            error,
-            trendy,
-            req
-        });
-    }
-
-
-    let user = await userModel.findOne({ username: req.user.username });
-    let cart = user?.cart || [];
-
     res.render('index', {
-        user: req.user,
+        user: res.locals.user,
         feat,
-        error,
         trendy,
+        error,
         req,
-        cart
+        cart: res.locals.cart
     });
+
+    // if (!req.user || req.user === 'unsigned') {
+        
+    //     return res.render('index', {
+    //         user: 'unsigned',
+    //         feat,
+    //         error,
+    //         trendy,
+    //         req
+    //     });
+    // }
+
+
+    // let user = await userModel.findOne({ username: req.user.username });
+    // let cart = user?.cart || [];
+
+    // res.render('index', {
+    //     user: req.user,
+    //     feat,
+    //     error,
+    //     trendy,
+    //     req,
+    //     cart
+    // });
 });
 
 router.get('/access', redirectIfLogin, function (req, res) {
@@ -245,7 +255,7 @@ router.get('/products', (req, res) => {
     res.render('product', { user: 'unsigned' })
 })
 
-router.get('/products/:id', isLoggedIn, async (req, res) => {
+router.get('/products/:id', isLoggedIn, addToCart, async (req, res) => {
     let product = await productsModel.findOne({ _id: req.params.id });
 
     if (!product.isApproved) {
@@ -285,22 +295,22 @@ router.get('/products/:id', isLoggedIn, async (req, res) => {
 
 
 
-    if (!req.user || req.user === 'unsigned') {
-        return res.render('product', {
-            product,
-            user: 'unsigned',
-            productPage: true,
-            discountedPrice,
-            discountPercent,
-            discountName,
-            discountEnd
-        });
-    }
+    // if (!req.user || req.user === 'unsigned') {
+    //     return res.render('product', {
+    //         product,
+    //         user: 'unsigned',
+    //         productPage: true,
+    //         discountedPrice,
+    //         discountPercent,
+    //         discountName,
+    //         discountEnd
+    //     });
+    // }
 
-    let user = await userModel.findOne({ username: req.user.username });
-    let cart = user?.cart || [];
+    // let user = await userModel.findOne({ username: req.user.username });
+    // let cart = user?.cart || [];
 
-    res.render('product', { product, user: req.user, cart, productPage: true, discountPercent, discountedPrice,discountName,discountEnd});
+    res.render('product', { product, user: res.locals.user, cart: res.locals.cart, productPage: true, discountPercent, discountedPrice,discountName,discountEnd});
 });
 
 router.get('/clothings/:category', isLoggedIn, async (req, res) => {
@@ -424,11 +434,12 @@ router.get('/login', redirectIfLogin, (req, res) => {
     let loginError = req.flash('loginError')
     res.render('login', { loginError })
 })
+
 router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
     console.log(req.user)
+    const productId = req.params.id;
 
     if (!req.user || req.user === "unsigned") {
-        console.log("not logged in")
         let cart = [];
 
         try {
@@ -436,19 +447,15 @@ router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
         } catch (e) {
             cart = [];
         }
-
-        const productId = req.params.id;
-
-
-        const existing = cart.find(item => item.productId === productId);
+        
+        const existing = cart.find(item => item.productId.toString() === productId.toString());
 
         if (existing) {
             existing.quantity += 1;
         } else {
-
             const product = await productsModel.findById(productId);
             cart.push({
-                productId,
+                productId: productId.toString(),
                 title: product.title,
                 quantity: 1,
                 price: product.price,
@@ -456,12 +463,31 @@ router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
             });
         }
 
+        // const productId = req.params.id;
+
+
+        // const existing = cart.find(item => item.productId === productId);
+
+        // if (existing) {
+        //     existing.quantity += 1;
+        // } else {
+
+        //     const product = await productsModel.findById(productId);
+        //     cart.push({
+        //         productId,
+        //         title: product.title,
+        //         quantity: 1,
+        //         price: product.price,
+        //         image: product.mainImage
+        //     });
+        // }
 
         res.cookie("guestCart", JSON.stringify(cart), {
             httpOnly: false,
             maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
             secure: false
         });
+        res.locals.cart = cart;
 
         return res.status(200).json({ guest: true, cart });
     }
@@ -470,19 +496,20 @@ router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
     const user = await userModel.findOne({ username: req.user.username });
 
     const existing = user.cart.find(
-        item => item.productId.toString() === req.params.id
+        item => item.productId.toString() === productId.toString()
     );
 
     if (existing) {
         existing.quantity += 1;
     } else {
         user.cart.push({
-            productId: req.params.id,
+            productId: productId,
             quantity: 1
         });
     }
 
     await user.save();
+    res.locals.cart = user.cart;
 
     res.json({ guest: false, cart: user.cart });
 });
