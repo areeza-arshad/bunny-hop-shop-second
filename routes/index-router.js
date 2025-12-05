@@ -175,7 +175,13 @@ router.post('/register', async (req, res) => {
                         process.env.TOKEN
                     );
                     
-                    res.cookie('token', token);
+                res.cookie('token', token, {
+  httpOnly: true,   
+  secure: true,        
+  sameSite: 'lax',       
+  maxAge: 30 * 24 * 60 * 60 * 1000 
+})
+
                     res.redirect('/');
                 } catch (error) {
                     req.flash('registerError', 'cannot create user');
@@ -273,35 +279,46 @@ router.post('/reset-password', async (req, res) => {
 });
 
 
-router.post('/login', async (req, res) => {
-    let { email, password } = req.body
-    let user = await userModel.findOne({ email })
-    if (!user) {
-        req.flash('loginError', 'please register first')
-        return res.redirect('/access')
-    }
+  router.post('/login', async (req, res) => {
+      let { email, password } = req.body
+      let user = await userModel.findOne({ email })
+      const isMobile = /mobile/i.test(req.headers['user-agent']);
+      console.log(isMobile)
+if (!user) {
+  req.flash('loginError', 'please register first');
+  return res.redirect(isMobile ? '/login' : '/access');
+}
 
-    try {
-        if (!process.env.TOKEN) {
-            req.flash('registerError', 'Token missing')
-            return res.send('bring token')
-        }
-        bcrypt.compare(password, user.password, (err, result) => {
-            if (!result) {
-                req.flash('loginError', 'something went wrong')
-                return res.redirect('/access')
-            }
-            if (result) {
-                let token = jwt.sign({ username: user.username, userId: user._id, isSeller: user.isSeller}, process.env.TOKEN)
-                res.cookie('token', token)
-                res.redirect('/')
-            }
-        })
-    } catch (error) {
-        req.flash('loginError', 'something went wrong')
-        res.redirect('/access')
-    }
-})
+
+      try {
+          if (!process.env.TOKEN) {
+              req.flash('registerError', 'Token missing')
+              return res.send('bring token')
+          }
+          bcrypt.compare(password, user.password, (err, result) => {
+if (!result) {
+  console.log(result)
+  req.flash('loginError', "Invalid Credentials!");
+  return res.redirect(isMobile ? '/login' : '/access');
+}
+
+              if (result) {
+                  let token = jwt.sign({ username: user.username, userId: user._id, isSeller: user.isSeller}, process.env.TOKEN)
+                  res.cookie('token', token, {
+    httpOnly: true,   
+    secure: true,        
+    sameSite: 'lax',       
+    maxAge: 30 * 24 * 60 * 60 * 1000 
+  })
+
+                  res.redirect('/')
+              }
+          })
+      } catch (error) {
+req.flash('loginError', error.message);
+return res.redirect(isMobile ? '/login' : '/access');
+      }
+  })
 
 router.get('/logout', (req, res) => {
     res.clearCookie('token')
@@ -531,7 +548,7 @@ router.get('/fits/:gender', isLoggedIn, async (req, res) => {
   }
 });
 
-router.get('/login', redirectIfLogin, (req, res) => {
+router.get('/login', (req, res) => {
     let loginError = req.flash('loginError')
     res.render('login', { loginError })
 })
@@ -585,7 +602,7 @@ router.post('/add-to-cart/:id', isLoggedIn, async (req, res) => {
 
         res.cookie("guestCart", JSON.stringify(cart), {
             httpOnly: false,
-            maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+            maxAge: 1000 * 60 * 60 * 24 * 30, 
             secure: false
         });
         res.locals.cart = cart;
@@ -875,7 +892,7 @@ router.get('/order/:id', async (req, res) => {
 
     // Render dynamic page
     res.render('success-checkout', {
-      user: req.user || null,  // logged-in user info (null if unsigned/guest)
+      user: req.user || null,  
       order: order,
       userType
     });

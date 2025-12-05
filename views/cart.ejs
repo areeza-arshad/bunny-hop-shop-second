@@ -119,9 +119,7 @@
   <li class="flex flex-wrap gap-4 text-sm">
     Subtotal <span class="ml-auto font-bold">PKR <%=price.toFixed(2)%></span>
   </li>
-  <li class="flex flex-wrap gap-4 text-sm">
-    Shipping <span class="ml-auto font-bold">PKR 250.00</span>
-  </li>
+ 
 
   <% 
     let discountedTotal = 0;
@@ -153,9 +151,12 @@
   <!-- ✅ Show total discounted price -->
  <% if (hasDiscount) { %>
   <li class="flex flex-wrap gap-4 text-sm text-blue-600 font-bold">
-    Discounted Total <span class="ml-auto">PKR <%= (discountedTotal + 250).toFixed(2) %></span>
+    Discounted Total <span class="ml-auto">PKR <%= (discountedTotal).toFixed(2) %></span>
   </li>
 <% } %>
+ <li class="flex flex-wrap gap-4 text-sm">
+    Shipping <span class="ml-auto font-bold">PKR 250.00</span>
+  </li>
   <hr class="border-gray-300" />
   <li class="flex flex-wrap gap-4 text-sm font-bold">
     Total <span class="ml-auto">PKR <%= (discountedTotal + 250).toFixed(2) %></span>
