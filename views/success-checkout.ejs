@@ -31,7 +31,7 @@
                 </div>
 
                 <div class="order-items" style="display: none;">
-                    <% order.items.forEach(item => { %>
+                    <!-- <% order.items.forEach(item => { %>
                         <div class="flex flex-col gap-2">
                             <p class="text-sm font-medium text-black">
                                 Product: <%= item.productId.title %>
@@ -39,10 +39,50 @@
                             <p class="text-sm font-medium text-black">
                                 Quantity: <%= item.quantity %>
                             </p>
+
                             <span>PKR <%= order.totalPrice %></span>
 
                         </div>
-                    <% }) %>
+                    <% }) %> -->
+                    <!-- <% order.items.forEach(item => { %>
+                    <div class="flex flex-col gap-2">
+                        <p class="text-sm font-medium text-black">
+                            Product: <%= item.productId.title %>
+                        </p>
+                        <p class="text-sm font-medium text-black">
+                            Quantity: <%= item.quantity %>
+                        </p>
+
+                        <p class="text-sm font-medium text-black">
+                            <% if (item.discountedPrice && item.discountedPrice) { %>
+                                <span>
+                                    PKR.<%= item.discountedPrice %>
+                                </span>
+                            <% } else { %>
+                                <span>PKR. <%= item.price %></span>
+                            <% } %>
+                        </p>
+                        
+                    </div>
+                    <% }) %> -->
+
+<!-- Show total price and total savings -->
+<div class="mt-4 p-2 border-t">
+  <p class="text-lg font-semibold">
+    Total: PKR. <%= order.totalPrice %>
+  </p>
+  <% 
+    const totalSavings = order.items.reduce((sum, i) => sum + (i.originalPrice - i.finalPrice) * i.quantity, 0); 
+    if (totalSavings > 0) { 
+  %>
+    <p class="text-md text-green-600">
+      Total Savings: PKR. <%= totalSavings %>
+    </p>
+  <% } %>
+</div>
+
+
+                    
                 </div>
             </div>
 

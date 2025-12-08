@@ -800,77 +800,324 @@ router.get('/checkout/:id', isLoggedIn, async (req, res) => {
 
     res.render('checkout', {user: req.user, cart: user?.cart || [], product, req: req})
 })
-// router.post('/checkout', isLoggedInStrict, async (req,res) => {
-//     let {fullName, lastName,street, city, state, zip, phoneNumber, totalPrice, email} = req.body
-//     let user = await userModel.findOne({ username: req.user.username })
-//     if(req.body.single){
-//         let product = await productModel.findOne({_id: req.body.productId})
-//         try {
-//             let order = await orderModel.create({
-//                 fullName,
-//                 lastName,
-//                 shippingAddress : {
-//                     street,
-//                     city,
-//                     state,
-//                     zip
-//                 },
-//                 items: {productId: product._id},
-//                 totalPrice: product.price,
-//                 status: 'confirmed',
-//                 userId: req.user.userId
-            
-//             }) 
-//             req.session.checkoutDone = 'true'
-//             user.orders.push(order)
-//             await user.save()
-//             return res.redirect('/success-checkout')
-//         } catch (error) {
-//             console.log(error)
-//         }
-//     }
-//     if(req.body.cart){
-//         let cart = user.cart
-//        let orderItems = []
-//        cart.forEach((item) => {
-//         orderItems.push({
-//             productId: item.productId,
-//             quantity: item.quantity
-//         })
-//        })
-//         try {
-//             let order = await orderModel.create({
-//                 fullName,
-//                 email,
-//                 phoneNumber,
-//                 shippingAddress : {
-//                     street,
-//                     city,
-//                     state,
-//                     zip
-//                 },
-//                 items: orderItems,
-//                 totalPrice: Number(totalPrice) + 250,
-//                 status: 'confirmed',
-//                 userId: req.user.userId
-//             })
-//             req.session.checkoutDone = 'true'
-//             user.orders.push(order)
-//             user.cart = []
-//             await user.save()
-//             return res.redirect('/success-checkout')
-//         } catch (error) {
-//             console.log(error)
-//         }
-//     }
-// })
-// router.get('/order/:id', async (req, res) => {
-//   const order = await orderModel.findById(req.params.id);
 
-//   res.render('success-checkout', { 
-//     order: order 
-//   });
+// router.post('/checkout', isLoggedIn, async (req, res) => {
+//   try {
+//     let {
+//       fullName,
+//       lastName,
+//       street,
+//       city,
+//       state,
+//       zip,
+//       phoneNumber,
+//       email,
+//       single,
+//       productId,
+//       quantity
+//     } = req.body;
+
+//     const isGuest = req.user === "unsigned";
+//     const adminEmail = process.env.ADMIN_EMAIL;
+
+//     let orderItems = [];
+
+//     // Helper to get product info and discounted price
+//     const getOrderItem = async (id, qty) => {
+//       const product = await productModel.findById(id);
+//       const discount = await getDiscountForProduct(id);
+//       return {
+//         productId: id,
+//         quantity: qty || 1,
+//         originalPrice: product.price,   // store original price
+//         finalPrice: discount.finalPrice // store discounted price
+//       };
+//     };
+
+//     if (isGuest) {
+//       if (single === "true") {
+//         orderItems.push(await getOrderItem(productId, quantity));
+//       } else {
+//         let guestCart = [];
+//         try {
+//           guestCart = JSON.parse(req.cookies.guestCart || "[]");
+//         } catch (e) {
+//           guestCart = [];
+//         }
+
+//         orderItems = await Promise.all(
+//           guestCart.map(item => getOrderItem(item.productId, item.quantity))
+//         );
+//       }
+//     } else {
+//       // Logged-in user
+//       if (single === "true") {
+//         orderItems.push(await getOrderItem(productId, quantity));
+//       } else {
+//         const user = await userModel.findOne({ username: req.user.username });
+//         orderItems = await Promise.all(
+//           user.cart.map(i => getOrderItem(i.productId, i.quantity))
+//         );
+
+//         // Clear user cart
+//         user.cart = [];
+//         await user.save();
+//       }
+//     }
+
+//     // Calculate totalPrice using discounted prices
+//     const totalPrice = orderItems.reduce((sum, item) => {
+//       return sum + item.finalPrice * item.quantity;
+//     }, 0);
+
+//     const orderData = {
+//       fullName,
+//       lastName,
+//       phoneNumber,
+//       email,
+//       shippingAddress: { street, city, state, zip },
+//       items: orderItems,
+//       totalPrice,
+//       status: "confirmed",
+//       userId: isGuest ? null : req.user.userId,
+//       isGuest
+//     };
+
+//     const order = await orderModel.create(orderData);
+//     await order.populate({ path: "items.productId" });
+
+//     // Send confirmation emails
+//     await sendEmail({
+//       to: email,
+//       subject: "Your Bunny Hop Shop Order Confirmation",
+//       html: orderEmailTemplate(order)
+//     });
+
+//     await sendEmail({
+//       to: adminEmail,
+//       subject: "New Order Received",
+//       html: `<h2>New Order Alert</h2>
+//              <p>Order ID: ${order._id}</p>
+//              <p>Customer: ${order.fullName}</p>
+//              <p>Total: PKR.${order.totalPrice}</p>
+//              <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
+//              <p>
+//                <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
+//                   style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
+//                   View Order Receipt
+//                </a>
+//              </p>
+//              <p>
+//                Or see all orders here: 
+//                <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
+//              </p>`
+//     });
+
+//     if (isGuest) res.clearCookie("guestCart");
+
+//     req.session.checkoutDone = "true";
+//     return res.redirect(`/order/${order._id}`);
+
+//   } catch (error) {
+//     console.log(error);
+//     req.flash("error", "Error in Checkout");
+//     res.status(500).send("Checkout failed");
+//   }
 // });
+
+
+router.post('/checkout', isLoggedIn, async (req, res) => {
+  try {
+    let {
+      fullName,
+      lastName,
+      street,
+      city,
+      state,
+      zip,
+      phoneNumber,
+      email,
+      totalPrice,
+      single,
+      productId,
+      quantity
+    } = req.body;
+
+    const isGuest = req.user === "unsigned";
+    const adminEmail = process.env.ADMIN_EMAIL 
+
+    if (isGuest) {
+      let orderItems = [];
+
+      if (single === "true") {
+        orderItems.push({ productId, quantity: quantity || 1 });
+      } else {
+        let guestCart = [];
+        try {
+          guestCart = JSON.parse(req.cookies.guestCart || "[]");
+        } catch (e) {
+          guestCart = [];
+        }
+        guestCart.forEach(item => {
+          orderItems.push({ productId: item.productId, quantity: item.quantity });
+        });
+      }
+
+      const order = await orderModel.create({
+        fullName,
+        lastName,
+        phoneNumber,
+        email,
+        shippingAddress: { street, city, state, zip },
+        items: orderItems,
+        totalPrice: Number(totalPrice),
+        status: "confirmed",
+        userId: null,
+        isGuest: true
+      });
+
+      await order.populate({ path: "items.productId" });
+
+      await sendEmail({
+        to: email,
+        subject: "Your Bunny Hop Shop Order Confirmation",
+        html: orderEmailTemplate(order)
+      });
+
+
+await sendEmail({
+  to: adminEmail,
+  subject: "New Order Received",
+  html: `<h2>New Order Alert</h2>
+         <p>Order ID: ${order._id}</p>
+         <p>Customer: ${order.fullName}</p>
+         <p>Total: PKR.${order.totalPrice}</p>
+         <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
+         <p>
+           <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
+              style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
+              View Order Receipt
+           </a>
+         </p>
+         <p>
+           Or see all orders here: 
+           <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
+         </p>`
+});
+
+      res.clearCookie("guestCart");
+      req.session.checkoutDone = "true";
+      return res.redirect(`/order/${order._id}`);
+    }
+
+    let user = await userModel.findOne({ username: req.user.username });
+
+    if (single === "true") {
+      let order = await orderModel.create({
+        fullName,
+        lastName,
+        phoneNumber,
+        shippingAddress: { street, city, state, zip },
+        items: [{ productId, quantity: quantity || 1 }],
+        totalPrice: Number(totalPrice),
+        status: "confirmed",
+        userId: req.user.userId
+      });
+
+      await order.populate({ path: "items.productId" });
+
+      user.orders.push(order);
+      await user.save();
+
+  
+      await sendEmail({
+        to: user.email,
+        subject: "Your Bunny Hop Shop Order Confirmation",
+        html: orderEmailTemplate(order)
+      });
+      console.log(order)
+await sendEmail({
+  to: adminEmail,
+  subject: "New Order Received",
+  html: `<h2>New Order Alert</h2>
+         <p>Order ID: ${order._id}</p>
+         <p>Customer: ${order.fullName}</p>
+         <p>Total: PKR.${order.totalPrice}</p>
+         <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
+         <p>
+           <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
+              style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
+              View Order Receipt
+           </a>
+         </p>
+         <p>
+           Or see all orders here: 
+           <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
+         </p>`
+});
+
+
+      req.session.checkoutDone = "true";
+      return res.redirect(`/order/${order._id}`);
+    }
+
+    let orderItems = user.cart.map(i => ({
+      productId: i.productId,
+      quantity: i.quantity
+    }));
+
+    let order = await orderModel.create({
+      fullName,
+      email,
+      phoneNumber,
+      shippingAddress: { street, city, state, zip },
+      items: orderItems,
+      totalPrice: Number(totalPrice),
+      status: "confirmed",
+      userId: req.user.userId
+    });
+
+    await order.populate({ path: "items.productId" });
+
+    user.orders.push(order);
+    user.cart = [];
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: "Your Bunny Hop Shop Order Confirmation",
+      html: orderEmailTemplate(order)
+    });
+
+await sendEmail({
+  to: adminEmail,
+  subject: "New Order Received",
+  html: `<h2>New Order Alert</h2>
+         <p>Order ID: ${order._id}</p>
+         <p>Customer: ${order.fullName}</p>
+         <p>Total: PKR.${order.totalPrice}</p>
+         <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
+         <p>
+           <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
+              style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
+              View Order Receipt
+           </a>
+         </p>
+         <p>
+           Or see all orders here: 
+           <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
+         </p>`
+});
+
+    req.session.checkoutDone = "true";
+    return res.redirect(`/order/${order._id}`);
+
+  } catch (error) {
+    console.log(error);
+    req.flash("error", "Error in Checkout");
+    res.status(500).send("Checkout failed");
+  }
+});
 
 router.get('/order/:id', async (req, res) => {
   try {
@@ -1096,25 +1343,148 @@ router.get('/order/:id', async (req, res) => {
 //   }
 // });
 
-// router.get('/success-checkout', isLoggedIn, async (req, res) => {
 
-//     if (!req.session.lastOrderId) {
-//         return res.send("No order found");
+
+// router.post('/checkout', isLoggedIn, async (req, res) => {
+//   try {
+//     let {
+//       fullName,
+//       lastName,
+//       street,
+//       city,
+//       state,
+//       zip,
+//       phoneNumber,
+//       email,
+//       single,
+//       productId,
+//       quantity
+//     } = req.body;
+
+//     const isGuest = req.user === "unsigned";
+//     const adminEmail = process.env.ADMIN_EMAIL;
+
+//     let orderItems = [];
+
+//     if (isGuest) {
+//       // Guest user
+//       if (single === "true") {
+//         const product = await productModel.findById(productId);
+//         const discount = await getDiscountForProduct(productId);
+
+//         orderItems.push({
+//           productId,
+//           quantity: quantity || 1,
+//           finalPrice: discount.finalPrice
+//         });
+//       } else {
+//         let guestCart = [];
+//         try {
+//           guestCart = JSON.parse(req.cookies.guestCart || "[]");
+//         } catch (e) {
+//           guestCart = [];
+//         }
+
+//         // Calculate discounted prices for all items
+//         orderItems = await Promise.all(guestCart.map(async item => {
+//           const discount = await getDiscountForProduct(item.productId);
+//           return {
+//             productId: item.productId,
+//             quantity: item.quantity,
+//             finalPrice: discount.finalPrice
+//           };
+//         }));
+//       }
+//     } else {
+//       // Logged-in user
+//       if (single === "true") {
+//         const product = await productModel.findById(productId);
+//         const discount = await getDiscountForProduct(productId);
+
+//         orderItems.push({
+//           productId,
+//           quantity: quantity || 1,
+//           finalPrice: discount.finalPrice
+//         });
+//       } else {
+//         const user = await userModel.findOne({ username: req.user.username });
+//         orderItems = await Promise.all(user.cart.map(async i => {
+//           const discount = await getDiscountForProduct(i.productId);
+//           return {
+//             productId: i.productId,
+//             quantity: i.quantity,
+//             finalPrice: discount.finalPrice
+//           };
+//         }));
+
+//         // Clear user cart
+//         user.cart = [];
+//         await user.save();
+//       }
 //     }
 
-//     const order = await orderModel
-//         .findById(req.session.lastOrderId)
-//         .populate("items.productId");
+//     // Calculate totalPrice with discounts
+//     const totalPrice = orderItems.reduce((sum, item) => {
+//       return sum + item.finalPrice * item.quantity;
+//     }, 0);
 
-//     let user = await userModel.findOne({ username: req.user.username });
-//     let cart = user?.cart || [];
+//     // Create order
+//     const orderData = {
+//       fullName,
+//       lastName,
+//       phoneNumber,
+//       email,
+//       shippingAddress: { street, city, state, zip },
+//       items: orderItems,
+//       totalPrice,
+//       status: "confirmed",
+//       userId: isGuest ? null : req.user.userId,
+//       isGuest
+//     };
 
-//     res.render('success-checkout', {
-//         user: req.user,
-//         cart,
-//         order
+//     const order = await orderModel.create(orderData);
+//     await order.populate({ path: "items.productId" });
+
+//     // Send confirmation emails
+//     await sendEmail({
+//       to: email,
+//       subject: "Your Bunny Hop Shop Order Confirmation",
+//       html: orderEmailTemplate(order)
 //     });
+
+//     await sendEmail({
+//       to: adminEmail,
+//       subject: "New Order Received",
+//       html: `<h2>New Order Alert</h2>
+//              <p>Order ID: ${order._id}</p>
+//              <p>Customer: ${order.fullName}</p>
+//              <p>Total: PKR.${order.totalPrice}</p>
+//              <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
+//              <p>
+//                <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
+//                   style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
+//                   View Order Receipt
+//                </a>
+//              </p>
+//              <p>
+//                Or see all orders here: 
+//                <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
+//              </p>`
+//     });
+
+//     if (isGuest) res.clearCookie("guestCart");
+
+//     req.session.checkoutDone = "true";
+//     return res.redirect(`/order/${order._id}`);
+
+//   } catch (error) {
+//     console.log(error);
+//     req.flash("error", "Error in Checkout");
+//     res.status(500).send("Checkout failed");
+//   }
 // });
+
+
 
 
 // router.post('/checkout', isLoggedIn, async (req, res) => {
@@ -1135,18 +1505,32 @@ router.get('/order/:id', async (req, res) => {
 //     } = req.body;
 
 //     const isGuest = req.user === "unsigned";
+//     const adminEmail = process.env.ADMIN_EMAIL;
 
+//     // ============================================
+//     // FUNCTION: Build orderItems with price + discount
+//     // ============================================
+//     async function buildItem(prodId, qty) {
+//       const product = await productModel.findById(prodId);
 
+//       return {
+//         productId: prodId,
+//         quantity: qty,
+//         price: product.price,
+//         discountedPrice: product.discountedPrice || null
+//       };
+//     }
+
+//     // ============================================
+//     // =======   GUEST USER CHECKOUT  ==============
+//     // ============================================
 //     if (isGuest) {
 //       let orderItems = [];
 
 //       if (single === "true") {
-//         orderItems.push({
-//           productId,
-//           quantity: quantity || 1
-//         });
-//       } else {
+//         orderItems.push(await buildItem(productId, quantity || 1));
 
+//       } else {
 //         let guestCart = [];
 //         try {
 //           guestCart = JSON.parse(req.cookies.guestCart || "[]");
@@ -1154,12 +1538,9 @@ router.get('/order/:id', async (req, res) => {
 //           guestCart = [];
 //         }
 
-//         guestCart.forEach(item => {
-//           orderItems.push({
-//             productId: item.productId,
-//             quantity: item.quantity
-//           });
-//         });
+//         for (let item of guestCart) {
+//           orderItems.push(await buildItem(item.productId, item.quantity));
+//         }
 //       }
 
 //       const order = await orderModel.create({
@@ -1169,7 +1550,7 @@ router.get('/order/:id', async (req, res) => {
 //         email,
 //         shippingAddress: { street, city, state, zip },
 //         items: orderItems,
-//         totalPrice: Number(totalPrice),   
+//         totalPrice: Number(totalPrice),
 //         status: "confirmed",
 //         userId: null,
 //         isGuest: true
@@ -1183,26 +1564,45 @@ router.get('/order/:id', async (req, res) => {
 //         html: orderEmailTemplate(order)
 //       });
 
-//       res.clearCookie("guestCart"); 
+//       await sendEmail({
+//         to: adminEmail,
+//         subject: "New Order Received",
+//         html: `<h2>New Order Alert</h2>
+//                <p>Order ID: ${order._id}</p>
+//                <p>Customer: ${order.fullName}</p>
+//                <p>Total: PKR.${order.totalPrice}</p>
+//                <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//       });
+
+//       res.clearCookie("guestCart");
 //       req.session.checkoutDone = "true";
 //       return res.redirect(`/order/${order._id}`);
-
 //     }
 
+//     // ============================================
+//     // =======   LOGGED-IN USER CHECKOUT  =========
+//     // ============================================
 
 //     let user = await userModel.findOne({ username: req.user.username });
 
+//     // 💚 Single product checkout
 //     if (single === "true") {
+//       let orderItems = [
+//         await buildItem(productId, quantity || 1)
+//       ];
 
 //       let order = await orderModel.create({
 //         fullName,
 //         lastName,
+//         phoneNumber,
 //         shippingAddress: { street, city, state, zip },
-//         items: [{ productId, quantity: quantity || 1 }],
-//         totalPrice: Number(totalPrice),   
+//         items: orderItems,
+//         totalPrice: Number(totalPrice),
 //         status: "confirmed",
 //         userId: req.user.userId
 //       });
+
+//       await order.populate({ path: "items.productId" });
 
 //       user.orders.push(order);
 //       await user.save();
@@ -1213,15 +1613,25 @@ router.get('/order/:id', async (req, res) => {
 //         html: orderEmailTemplate(order)
 //       });
 
+//       await sendEmail({
+//         to: adminEmail,
+//         subject: "New Order Received",
+//         html: `<h2>New Order Alert</h2>
+//                <p>Order ID: ${order._id}</p>
+//                <p>Customer: ${order.fullName}</p>
+//                <p>Total: PKR.${order.totalPrice}</p>
+//                <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//       });
+
 //       req.session.checkoutDone = "true";
 //       return res.redirect(`/order/${order._id}`);
 //     }
 
-    
-//     let orderItems = user.cart.map(i => ({
-//       productId: i.productId,
-//       quantity: i.quantity
-//     }));
+//     // 💚 Full cart checkout
+//     let orderItems = [];
+//     for (let item of user.cart) {
+//       orderItems.push(await buildItem(item.productId, item.quantity));
+//     }
 
 //     let order = await orderModel.create({
 //       fullName,
@@ -1229,13 +1639,15 @@ router.get('/order/:id', async (req, res) => {
 //       phoneNumber,
 //       shippingAddress: { street, city, state, zip },
 //       items: orderItems,
-//       totalPrice: Number(totalPrice), 
+//       totalPrice: Number(totalPrice),
 //       status: "confirmed",
 //       userId: req.user.userId
 //     });
 
+//     await order.populate({ path: "items.productId" });
+
 //     user.orders.push(order);
-//     user.cart = []; 
+//     user.cart = [];
 //     await user.save();
 
 //     await sendEmail({
@@ -1244,155 +1656,219 @@ router.get('/order/:id', async (req, res) => {
 //       html: orderEmailTemplate(order)
 //     });
 
+//     await sendEmail({
+//       to: adminEmail,
+//       subject: "New Order Received",
+//       html: `<h2>New Order Alert</h2>
+//              <p>Order ID: ${order._id}</p>
+//              <p>Customer: ${order.fullName}</p>
+//              <p>Total: PKR.${order.totalPrice}</p>
+//              <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//     });
+
 //     req.session.checkoutDone = "true";
 //     return res.redirect(`/order/${order._id}`);
 
-
 //   } catch (error) {
 //     console.log(error);
+//     req.flash("error", "Error in Checkout");
 //     res.status(500).send("Checkout failed");
 //   }
 // });
 
-router.post('/checkout', isLoggedIn, async (req, res) => {
-  try {
-    let {
-      fullName,
-      lastName,
-      street,
-      city,
-      state,
-      zip,
-      phoneNumber,
-      email,
-      single,
-      productId,
-      quantity
-    } = req.body;
+// router.post('/checkout', isLoggedIn, async (req, res) => {
+//   try {
+//     let {
+//       fullName,
+//       lastName,
+//       street,
+//       city,
+//       state,
+//       zip,
+//       phoneNumber,
+//       email,
+//       totalPrice,
+//       single,
+//       productId,
+//       quantity
+//     } = req.body;
 
-    const isGuest = req.user === "unsigned";
-    const adminEmail = process.env.ADMIN_EMAIL;
+//     const isGuest = req.user === "unsigned";
+//     const adminEmail = process.env.ADMIN_EMAIL;
 
-    let orderItems = [];
+//     // ==============================
+//     // Helper function to build order item
+//     // ==============================
+//     async function buildItem(prodId, qty) {
+//       const product = await productModel.findById(prodId);
+//       let discountInfo = null;
+//       if (product.discountPercent && product.discountPercent > 0) {
+//         const finalPrice = product.price - (product.price * product.discountPercent / 100);
+//         discountInfo = {
+//           finalPrice,
+//           percent: product.discountPercent,
+//           name: product.discountName || '',
+//           endDate: product.discountEndDate || null
+//         };
+//       }
 
-    if (isGuest) {
-      // Guest user
-      if (single === "true") {
-        const product = await productModel.findById(productId);
-        const discount = await getDiscountForProduct(productId);
+//       return {
+//         productId: prodId,
+//         quantity: qty,
+//         price: product.price,
+//         discountInfo
+//       };
+//     }
 
-        orderItems.push({
-          productId,
-          quantity: quantity || 1,
-          finalPrice: discount.finalPrice
-        });
-      } else {
-        let guestCart = [];
-        try {
-          guestCart = JSON.parse(req.cookies.guestCart || "[]");
-        } catch (e) {
-          guestCart = [];
-        }
+//     // ==============================
+//     // Guest User Checkout
+//     // ==============================
+//     if (isGuest) {
+//       let orderItems = [];
 
-        // Calculate discounted prices for all items
-        orderItems = await Promise.all(guestCart.map(async item => {
-          const discount = await getDiscountForProduct(item.productId);
-          return {
-            productId: item.productId,
-            quantity: item.quantity,
-            finalPrice: discount.finalPrice
-          };
-        }));
-      }
-    } else {
-      // Logged-in user
-      if (single === "true") {
-        const product = await productModel.findById(productId);
-        const discount = await getDiscountForProduct(productId);
+//       if (single === "true") {
+//         orderItems.push(await buildItem(productId, quantity || 1));
+//       } else {
+//         let guestCart = [];
+//         try {
+//           guestCart = JSON.parse(req.cookies.guestCart || "[]");
+//         } catch (e) {
+//           guestCart = [];
+//         }
+//         for (let item of guestCart) {
+//           orderItems.push(await buildItem(item.productId, item.quantity));
+//         }
+//       }
 
-        orderItems.push({
-          productId,
-          quantity: quantity || 1,
-          finalPrice: discount.finalPrice
-        });
-      } else {
-        const user = await userModel.findOne({ username: req.user.username });
-        orderItems = await Promise.all(user.cart.map(async i => {
-          const discount = await getDiscountForProduct(i.productId);
-          return {
-            productId: i.productId,
-            quantity: i.quantity,
-            finalPrice: discount.finalPrice
-          };
-        }));
+//       const order = await orderModel.create({
+//         fullName,
+//         lastName,
+//         phoneNumber,
+//         email,
+//         shippingAddress: { street, city, state, zip },
+//         items: orderItems,
+//         totalPrice: Number(totalPrice),
+//         status: "confirmed",
+//         userId: null,
+//         isGuest: true
+//       });
 
-        // Clear user cart
-        user.cart = [];
-        await user.save();
-      }
-    }
+//       await order.populate({ path: "items.productId" });
 
-    // Calculate totalPrice with discounts
-    const totalPrice = orderItems.reduce((sum, item) => {
-      return sum + item.finalPrice * item.quantity;
-    }, 0);
+//       await sendEmail({
+//         to: email,
+//         subject: "Your Bunny Hop Shop Order Confirmation",
+//         html: orderEmailTemplate(order)
+//       });
 
-    // Create order
-    const orderData = {
-      fullName,
-      lastName,
-      phoneNumber,
-      email,
-      shippingAddress: { street, city, state, zip },
-      items: orderItems,
-      totalPrice,
-      status: "confirmed",
-      userId: isGuest ? null : req.user.userId,
-      isGuest
-    };
+//       await sendEmail({
+//         to: adminEmail,
+//         subject: "New Order Received",
+//         html: `<h2>New Order Alert</h2>
+//                <p>Order ID: ${order._id}</p>
+//                <p>Customer: ${order.fullName}</p>
+//                <p>Total: PKR.${order.totalPrice}</p>
+//                <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//       });
 
-    const order = await orderModel.create(orderData);
-    await order.populate({ path: "items.productId" });
+//       res.clearCookie("guestCart");
+//       req.session.checkoutDone = "true";
+//       return res.redirect(`/order/${order._id}`);
+//     }
 
-    // Send confirmation emails
-    await sendEmail({
-      to: email,
-      subject: "Your Bunny Hop Shop Order Confirmation",
-      html: orderEmailTemplate(order)
-    });
+//     // ==============================
+//     // Logged-in User Checkout
+//     // ==============================
+//     let user = await userModel.findOne({ username: req.user.username });
 
-    await sendEmail({
-      to: adminEmail,
-      subject: "New Order Received",
-      html: `<h2>New Order Alert</h2>
-             <p>Order ID: ${order._id}</p>
-             <p>Customer: ${order.fullName}</p>
-             <p>Total: PKR.${order.totalPrice}</p>
-             <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>
-             <p>
-               <a href="${process.env.FRONTEND_URL}/order/${order._id}" 
-                  style="display:inline-block;padding:10px 15px;background:#007bff;color:#fff;text-decoration:none;border-radius:5px;">
-                  View Order Receipt
-               </a>
-             </p>
-             <p>
-               Or see all orders here: 
-               <a href="${process.env.FRONTEND_URL}/orders/all">Orders Dashboard</a>
-             </p>`
-    });
+//     // Single product
+//     if (single === "true") {
+//       const orderItems = [await buildItem(productId, quantity || 1)];
 
-    if (isGuest) res.clearCookie("guestCart");
+//       const order = await orderModel.create({
+//         fullName,
+//         lastName,
+//         phoneNumber,
+//         shippingAddress: { street, city, state, zip },
+//         items: orderItems,
+//         totalPrice: Number(totalPrice),
+//         status: "confirmed",
+//         userId: req.user.userId
+//       });
 
-    req.session.checkoutDone = "true";
-    return res.redirect(`/order/${order._id}`);
+//       await order.populate({ path: "items.productId" });
 
-  } catch (error) {
-    console.log(error);
-    req.flash("error", "Error in Checkout");
-    res.status(500).send("Checkout failed");
-  }
-});
+//       user.orders.push(order);
+//       await user.save();
 
+//       await sendEmail({
+//         to: user.email,
+//         subject: "Your Bunny Hop Shop Order Confirmation",
+//         html: orderEmailTemplate(order)
+//       });
+
+//       await sendEmail({
+//         to: adminEmail,
+//         subject: "New Order Received",
+//         html: `<h2>New Order Alert</h2>
+//                <p>Order ID: ${order._id}</p>
+//                <p>Customer: ${order.fullName}</p>
+//                <p>Total: PKR.${order.totalPrice}</p>
+//                <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//       });
+
+//       req.session.checkoutDone = "true";
+//       return res.redirect(`/order/${order._id}`);
+//     }
+
+//     // Full cart checkout
+//     let orderItems = [];
+//     for (let item of user.cart) {
+//       orderItems.push(await buildItem(item.productId, item.quantity));
+//     }
+
+//     const order = await orderModel.create({
+//       fullName,
+//       email,
+//       phoneNumber,
+//       shippingAddress: { street, city, state, zip },
+//       items: orderItems,
+//       totalPrice: Number(totalPrice),
+//       status: "confirmed",
+//       userId: req.user.userId
+//     });
+
+//     await order.populate({ path: "items.productId" });
+
+//     user.orders.push(order);
+//     user.cart = [];
+//     await user.save();
+
+//     await sendEmail({
+//       to: user.email,
+//       subject: "Your Bunny Hop Shop Order Confirmation",
+//       html: orderEmailTemplate(order)
+//     });
+
+//     await sendEmail({
+//       to: adminEmail,
+//       subject: "New Order Received",
+//       html: `<h2>New Order Alert</h2>
+//              <p>Order ID: ${order._id}</p>
+//              <p>Customer: ${order.fullName}</p>
+//              <p>Total: PKR.${order.totalPrice}</p>
+//              <p>Items: ${order.items.map(i => i.productId.title + " x" + i.quantity).join(", ")}</p>`
+//     });
+
+//     req.session.checkoutDone = "true";
+//     return res.redirect(`/order/${order._id}`);
+
+//   } catch (error) {
+//     console.log(error);
+//     req.flash("error", "Error in Checkout");
+//     res.status(500).send("Checkout failed");
+//   }
+// });
 
 
 router.get('/success-checkout', isLoggedIn, checkoutCheckout, async (req, res) => {

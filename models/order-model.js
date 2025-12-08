@@ -28,6 +28,8 @@ const orderSchema = mongoose.Schema({
       ref: 'product',
       required: true,
     },
+    price: Number,               // <-- add this
+    discountedPrice: Number,
     quantity: {
       type: Number,
       required: true,
