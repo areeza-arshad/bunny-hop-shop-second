@@ -23,8 +23,14 @@
         <div class="lg-hidden reveal" style="position: relative;">
           <div class="animate-float"
             style="width: 100%; height: 500px; background-color: #ffe4e1; border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 8px solid white; box-shadow: var(--shadow-lg);">
-            <img src="/media/hero-baby.jpg" alt="Happy Baby" style="width: 100%; height: 100%; object-fit: cover;"
+            <% if(typeof essentials !=='undefined' && essentials && essentials.heroImage) { %>
+                            <img src="<%= essentials.heroImage %>" alt="Happy Baby" style="width: 100%; height: 100%; object-fit: cover;"
               onerror="this.src='https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=800&auto=format&fit=crop'">
+              
+                        <% } else{ %>
+                          <img src="https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=800&auto=format&fit=crop" alt="Happy Baby alt" style="width: 100%; height: 100%; object-fit: cover;" >
+
+                      <%  } %>
           </div>
           <div class="animate-float"
             style="position: absolute; top: 10%; right: 0%; width: 80px; height: 80px; background: var(--color-secondary-accent); border-radius: 50%; z-index: -1; animation-delay: 1s;">
@@ -42,19 +48,22 @@
         <div class="feature-box">
           <i class="ri-truck-line feature-icon"></i>
           <h3>Free Shipping</h3>
-          <p style="font-size: 0.9rem; color: var(--color-text-secondary);">On orders over $50</p>
+          <p style="font-size: 0.9rem; color: var(--color-text-secondary);">On orders over PKR 3000</p>
         </div>
         <div class="feature-box">
           <i class="ri-shield-check-line feature-icon"></i>
           <h3>Safe Payment</h3>
           <p style="font-size: 0.9rem; color: var(--color-text-secondary);">100% Secure Checkout</p>
         </div>
-        <div class="feature-box">
+<div onclick="window.location.href='https://wa.me/923138190150';" 
+     class="feature-box cursor-click" 
+     style="cursor:pointer;">
+        
           <i class="ri-exchange-line feature-icon"></i>
-          <h3>Easy Returns</h3>
+          <h3  >Easy Returns</h3>
           <p style="font-size: 0.9rem; color: var(--color-text-secondary);">30 Day Money Back</p>
         </div>
-        <div class="feature-box">
+        <div class="feature-box" onclick="window.location.href='https://wa.me/923138190150';"  style="cursor:pointer;">
           <i class="ri-customer-service-2-line feature-icon"></i>
           <h3>24/7 Support</h3>
           <p style="font-size: 0.9rem; color: var(--color-text-secondary);">Always here for you</p>
@@ -104,7 +113,7 @@
         style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem;">
         <% if(feat.length> 0) { %>
           <% feat.forEach(function(product){ %>
-            <div class="product-card" onclick="window.location.href='/clothings/<%= product._id %>'"
+            <div class="product-card" onclick="window.location.href='/products/<%= product._id %>'"
               style="cursor: pointer; background: white; border-radius: var(--border-radius-lg); overflow: hidden; position: relative;">
               <div style="width: 100%; height: 350px; overflow: hidden; background: #fff;">
                 <img src="<%= product.mainImage %>" alt="<%= product.title %>"
