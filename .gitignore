@@ -3,3 +3,7 @@ node_modules
 conventions.md
 .vercel
 vercel.json
+debug_site
+promote-admin.js
+seed-products.js
+create-admin.js

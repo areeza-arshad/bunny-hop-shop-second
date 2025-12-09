@@ -12,7 +12,7 @@ const checkoutCheckout = require('../middlewares/checkout-check')
 const isSeller = require('../middlewares/isSeller')
 const productModel = require('../models/product-model');
 const multer = require('multer');
-const { default: storage } = require('../cloudinary');
+const { default: storage } = require('../config/cloudinary');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const saleModel = require('../models/sale-model');
@@ -23,6 +23,7 @@ const { getDiscountForProduct } = require("../utils/discount")
 const { orderEmailTemplate } = require("../helper/orderEmailTemplate");
 const addToCart = require('../middlewares/addto-cart');
 const mongoose = require('mongoose');
+const essentialsModel = require('../models/essentials-model');
 
 
 // router.get('/', isLoggedIn, addToCart, async function (req, res) {
@@ -73,7 +74,7 @@ router.get('/', isLoggedIn, addToCart, async function (req, res) {
       startDate: { $lte: now },
       endDate: { $gte: now }
     });
-
+    let essentials = await essentialsModel.findOne()
     let featProducts = await productsModel.find({ tags: 'featured' });
     let trendyProducts = await productsModel.find({ tags: 'trend' });
     let categories = await categoryModel.find({});
@@ -106,7 +107,6 @@ router.get('/', isLoggedIn, addToCart, async function (req, res) {
 
     let feat = applySale(featProducts);
     let trendy = applySale(trendyProducts);
-
     res.render('index', {
       user: res.locals.user,
       feat,
@@ -114,7 +114,8 @@ router.get('/', isLoggedIn, addToCart, async function (req, res) {
       categories,
       error: error,
       req: req,
-      cart: res.locals.cart
+      cart: res.locals.cart,
+      essentials
     });
   } catch (err) {
     console.error("Homepage Error:", err);
@@ -125,7 +126,8 @@ router.get('/', isLoggedIn, addToCart, async function (req, res) {
       categories: [],
       error: ["Something went wrong loading the homepage."],
       req: req,
-      cart: res.locals.cart || []
+      cart: res.locals.cart || [],
+      heroImg
     });
   }
 });

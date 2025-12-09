@@ -6,11 +6,14 @@ const productsModel = require('../models/product-model')
 const bcrypt = require('bcrypt')
 const userModel = require('../models/user-model')
 const jwt = require('jsonwebtoken')
-const { default: storage } = require('../cloudinary')
+const { default: storage } = require('../config/cloudinary')
 const multer = require('multer')
 const productModel = require('../models/product-model')
-
+const heroStorage = require("../config/hero-storage")
+const categoryModel = require('../models/category-model');
+const essentialsModel  = require('../models/essentials-model')
 const upload = multer({ storage });
+const uploadHero = multer({ storage: heroStorage });
 
 // router.get('/signup', isLoggedIn, async (req, res) => {
 //     let error = req.flash('error');
@@ -83,7 +86,6 @@ const upload = multer({ storage });
 // });
 
 
-const categoryModel = require('../models/category-model');
 
 router.get('/dashboard', isLoggedInStrict, isSeller, async (req, res) => {
   let user = await userModel.findOne({ username: req.user.username })
@@ -113,7 +115,7 @@ router.post('/create-category', isLoggedIn, isSeller, upload.single('image'), as
 
     await categoryModel.create({
       name: name,
-      image: req.file.path // Cloudinary path
+      image: req.file.path 
     });
 
     req.flash('success', 'Category created successfully');
@@ -127,7 +129,7 @@ router.post('/create-category', isLoggedIn, isSeller, upload.single('image'), as
 
 
 router.post('/push', isLoggedIn, isSeller, upload.array('images', 5), async (req, res) => {
-  console.log('form received')
+  // console.log('form received')
   let { title, description, price, gender, category, color, tags } = req.body;
 
   if (!title || !description || !price || !gender || !category || !color || req.files.length < 5) {
@@ -206,6 +208,68 @@ router.delete('/products/:id', isLoggedIn, async (req, res) => {
     return res.status(500).json({ success: false });
   }
 });
+
+
+
+router.get("/upload-hero", isLoggedIn, async (req, res) => {
+  try {
+    let seller = await userModel.findOne({ username: req.user.username });
+    let products = await productModel.find({ seller: seller._id });
+    let essentials = await essentialsModel.findOne();
+    let error = req.flash('error');
+    let success = req.flash('success');
+    
+    res.render('upload-hero', { 
+      products: products, 
+      user: req.user, 
+      cart: seller.cart,
+      essentials: essentials,
+      error: error,
+      success: success
+    });
+  } catch (error) {
+    req.flash("serverError", "Something went wrong");
+    res.redirect("/");
+  }
+});
+
+router.post("/upload-hero", isLoggedInStrict, isSeller,uploadHero.single("hero"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        req.flash("error", "No file uploaded");
+        return res.redirect("/seller/upload-hero");
+      }
+
+      const imageUrl = req.file.path;
+      console.log("Image URL:", imageUrl);
+
+      if (!imageUrl) {
+        req.flash("error", "Unable to get image URL from upload");
+        return res.redirect("/seller/upload-hero");
+      }
+
+      let essentials = await essentialsModel.findOne();
+      if (!essentials) essentials = new essentialsModel();
+
+      essentials.heroImage = imageUrl;
+      await essentials.save();
+
+      console.log("Updated hero:", essentials.heroImage);
+      req.flash("success", "Hero image updated successfully!");
+      return res.redirect("/seller/upload-hero");
+    } catch (err) {
+      console.log("Error:", err);
+      req.flash("error", "Error updating hero image: " + err.message);
+      return res.redirect("/seller/upload-hero");
+    }
+  }
+);
+
+
+
+
+
 
 
 
