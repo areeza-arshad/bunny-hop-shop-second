@@ -20,11 +20,9 @@
     </header>
 
     <main style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
-        <div
-            style="background: white; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;">
-
+        <div style="background: white; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 900px; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;">
             <!-- Login Section -->
-            <div style="padding: 3rem; display: flex; flex-direction: column; justify-content: center;">
+            <div style="padding: 2rem; display: flex; flex-direction: column; justify-content: center;" class="login">
                 <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Welcome Back</h2>
                 <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">Login to access your account</p>
 
@@ -65,8 +63,7 @@
             </div>
 
             <!-- Register Section -->
-            <div
-                style="background-color: var(--color-bg-secondary); padding: 3rem; display: flex; flex-direction: column; justify-content: center;">
+            <div style="background-color: var(--color-bg-secondary); padding: 3rem; display: flex; flex-direction: column; justify-content: center;" class="signup">
                 <h2 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Create Account</h2>
                 <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">Join us for exclusive offers</p>
 
@@ -124,6 +121,18 @@
 
             /* This is a simple stack for now. Real tabs would be better but this works for "hub" concept */
         }
+        @media (max-width: 425px) {
+            main {
+                padding: 1rem !important;
+            }
+            .login {
+                padding: 1.8rem !important;
+            }
+            .signup {
+                padding: 1.8rem !important;
+            }
+        }
+        
     </style>
     <style>
         .input {
