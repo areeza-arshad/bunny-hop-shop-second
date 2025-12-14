@@ -103,7 +103,12 @@ router.get('/categories', isLoggedInStrict, isSeller, async (req, res) => {
   let categories = await categoryModel.find({});
   let error = req.flash('error')
   let success = req.flash('success');
-  res.render('categories', { user, cart, error, success, categories })
+  let editingCategory = null;
+
+  if (req.query.edit) {
+    editingCategory = await categoryModel.findById(req.query.edit);
+  }
+  res.render('categories', { user, cart, error, success, categories, editingCategory })
 })
 
 router.post('/create-category', isLoggedIn, isSeller, upload.single('image'), async (req, res) => {
@@ -127,6 +132,75 @@ router.post('/create-category', isLoggedIn, isSeller, upload.single('image'), as
     res.redirect('/seller/categories');
   }
 });
+
+router.post(
+  '/edit-category/:id',
+  isLoggedIn,
+  isSeller,
+  upload.single('image'),
+  async (req, res) => {
+    try {
+      const { name } = req.body;
+
+      if (!name) {
+        req.flash('error', 'Category name is required');
+        return res.redirect('/seller/categories');
+      }
+
+      const updateData = { name };
+
+      // image sirf tab update hogi jab new upload ho
+      if (req.file) {
+        updateData.image = req.file.path;
+      }
+
+      await categoryModel.findByIdAndUpdate(req.params.id, updateData);
+
+      req.flash('success', 'Category updated successfully');
+      res.redirect('/seller/categories');
+
+    } catch (err) {
+      console.error(err);
+      req.flash('error', 'Failed to update category');
+      res.redirect('/seller/categories');
+    }
+  }
+);
+
+router.post(
+  '/delete-category/:id',
+  isLoggedIn,
+  isSeller,
+  async (req, res) => {
+    try {
+      const category = await categoryModel.findById(req.params.id);
+
+      if (!category) {
+        req.flash('error', 'Category not found');
+        return res.redirect('/seller/categories');
+      }
+
+      // OPTIONAL: image file delete from uploads
+      // const fs = require('fs');
+      // if (category.image) {
+      //   fs.unlink(category.image, err => {
+      //     if (err) console.log('Image delete error:', err);
+      //   });
+      // }
+
+      await categoryModel.findByIdAndDelete(req.params.id);
+
+      req.flash('success', 'Category deleted successfully');
+      res.redirect('/seller/categories');
+
+    } catch (err) {
+      console.error(err);
+      req.flash('error', 'Failed to delete category');
+      res.redirect('/seller/categories');
+    }
+  }
+);
+
 
 
 router.post('/push', isLoggedIn, isSeller, upload.array('images', 5), async (req, res) => {
