@@ -76,24 +76,17 @@
             <% if (!user || user==='unsigned' ) { %>
               <a href="/access" class="btn btn-primary signin" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Sign In</a>
               <% } else { %>
-<div class="relative flex items-center gap-2 justify-center ">
-  <!-- Username button -->
-  <button id="userDropdownBtn" class="text-sm font-medium px-2 py-1 mr-4 rounded hover:bg-gray-100 focus:outline-none transition">
-    <%= user.username %>
-  </button>
+              <div class="relative flex ">
+                <!-- Username button -->
+                <button id="userDropdownBtn" class="text-sm font-medium px-2 py-1 rounded hover:bg-gray-100 focus:outline-none transition">
+                  <%= user.username %>
+                </button>
 
-  <!-- Seller Dashboard Icon -->
-  <% if(user.isSeller) { %>
-    <a href="/seller/dashboard" title="Dashboard" class="text-lg ml-4 hover:text-gray-700 transition">
-      <i class="ri-dashboard-line"></i>
-    </a>
-  <% } %>
-
-  <!-- Logout dropdown -->
-    <a href="/logout" class="block p-2 logoutbtn text-red-600 text-sm hover:bg-gray-100 rounded-md">Logout</a>
-</div>
-
-
+                <!-- Seller Dashboard Icon -->
+                <% if(user.isSeller) { %>
+                  <a href="/seller/dashboard" title="Dashboard" class="text-lg ml-2 hover:text-gray-700 transition">
+                    <i class="ri-dashboard-line"></i>
+                  </a>
                 <% } %>
 
                 <!-- Logout dropdown -->
